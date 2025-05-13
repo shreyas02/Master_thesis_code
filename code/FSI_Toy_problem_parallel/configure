@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# go to the build directory first 
+# then use the command - source ../configure 
+
+SOURCE_DIR=../src
+BUILD_DIR=`pwd`
+
+cmake \
+    ${SOURCE_DIR}

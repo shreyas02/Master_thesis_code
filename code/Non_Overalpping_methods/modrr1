@@ -1,0 +1,244 @@
+
+function robin(relax,interface,a1,a2,αf,αs)
+    # Adding the model to the script 
+    path = "jsonFiles/tutmesh"*string(interface)*".json"
+    model = DiscreteModelFromFile(path)
+
+    # Define the measures
+    Ω = Interior(model)
+    Ω_l = Triangulation(model,tags="LeftDomain")
+    Ω_r = Triangulation(model,tags="RightDomain")
+
+    # Define the function spaces 
+    lb(x) = 0.0
+    rb(x) = 0.0
+    reffe = ReferenceFE(lagrangian, Float64, 1)
+    V0_u = TestFESpace(Ω_l, reffe, dirichlet_tags=["LeftBoundary","TopPoint","BottomPoint","points"])
+    V0_v = TestFESpace(Ω_r, reffe, dirichlet_tags=["RightBoundary","BottomPoint","TopPoint","points"])
+    U0_u = TrialFESpace(V0_u,lb)
+    U0_v = TrialFESpace(V0_v,rb)
+
+    # Create the multifield spaces
+    mfs = BlockMultiFieldStyle()
+    V0 = MultiFieldFESpace([V0_u, V0_v],style = mfs)
+    U0 = MultiFieldFESpace([U0_u, U0_v],style = mfs)
+
+    # Interface
+    Γ_lr = InterfaceTriangulation(Ω_l,Ω_r)
+    n_Γlr = get_normal_vector(Γ_lr)
+
+    # Numerical Integration
+    degree = 2
+    dΩ_l = Measure(Ω_l,degree)
+    dΩ_r = Measure(Ω_r,degree)
+
+    # Numerical Interation for the interface part
+    dΓ_lr = Measure(Γ_lr,degree)
+
+    # Define the coupling coefficients and source terms
+    f_u(x) = 1.0
+    f_v(x) = 1.0
+    α1(x) = a1
+    α2(x) = a2
+    m = 1
+
+    # Define the weak form
+    a_l(u,w) = ∫(α1(1)*∇(w)⋅∇(u))dΩ_l
+    a_r(v,z) = ∫(α2(1)*∇(z)⋅∇(v))dΩ_r
+
+    a((u,v),(w,z)) = a_l(u,w) + a_r(v,z) 
+    l((w,z)) = ∫(f_u * w)dΩ_l + ∫(f_v * z)dΩ_r
+
+    # Create the FE problem
+    op = AffineFEOperator(a, l, U0, V0)
+
+    A = get_matrix(op) 
+    b = get_vector(op)
+
+    # Function to get the range for each field
+    num_fields = 2
+    sizes = [Gridap.FESpaces.num_free_dofs(U0[i]) for i in 1:num_fields]
+    function get_range(field)
+        start = sum(sizes[1:field-1]) + 1
+        stop = sum(sizes[1:field])
+        return start:stop
+    end
+
+    # Getting the required Degrees of freedom 
+    V1 = V0[1]
+    V2 = V0[2]
+    dof_ids1 = get_cell_dof_ids(V1, Γ_lr)
+    dof_ids2 = get_cell_dof_ids(V2, Γ_lr)
+
+    n1 = size(dof_ids1)[1]
+    n2 = size(dof_ids2)[1]
+    u_ids = Int[]
+    v_ids = Int[]
+
+    function get_ids(dof_ids1, dof_ids2, n1, n2)
+        u_ids = Int[]
+        v_ids = Int[]
+        for i = 1:n1
+            temp1 = dof_ids1[i][1]
+            u_ids = union(u_ids, temp1)
+        end
+        for i = 1:n2
+            temp2 = dof_ids2[i][2]
+            v_ids = union(v_ids, temp2)
+        end
+        return u_ids, v_ids
+    end
+
+    # Then call the function:
+    u_ids, v_ids = get_ids(dof_ids1, dof_ids2, n1, n2)
+
+    u_ids = sort(u_ids)
+    v_ids = sort(v_ids)
+    UΓ = intersect(u_ids,v_ids)
+    UΓ = v_ids = [x for x in UΓ if x >= 0]
+
+    v_range = get_range(2)  # Mapping the indices of V to the global Space
+    VΓ = v_range[UΓ]
+
+    UI = collect(get_range(1))
+    VI = collect(get_range(2))
+    UI = [x for x in UI if !(x in UΓ)]
+    VI = [x for x in VI if !(x in VΓ)]
+
+    # Imposing the Dirichlet Neumann coupling
+    A[VΓ,UI] = m*A[UΓ,UI]
+    A[VΓ,UΓ] = m*A[UΓ,UΓ]
+    A[UΓ,UI] = 0*A[UΓ,UI]
+    A[UΓ,UΓ] = 0*A[UΓ,UΓ]
+    A[UΓ,UΓ] = I(size(UΓ)[1])
+    A[UΓ,VΓ] = -I(size(UΓ)[1])
+    b[VΓ] = b[VΓ] + m*b[UΓ]
+    b[UΓ] = 0*b[UΓ]
+
+    # Robin Robin Matrix 
+
+    Q = BlockArray(zeros(size(A)), blocksizes(A,1), blocksizes(A,2))
+    Q[UI,UI] = 1*I(size(UI)[1])
+    Q[UΓ,UΓ] = (αf)*I(size(UΓ)[1])
+    Q[UΓ,VΓ] = 1*I(size(VΓ)[1])
+    Q[VI,VI] = 1*I(size(VI)[1])
+    Q[VΓ,UΓ] = -(αs)*I(size(UΓ)[1])
+    Q[VΓ,VΓ] = 1*I(size(VΓ)[1])
+
+    if αf > 1e5
+        Q[UΓ,UΓ] = (1)*I(size(UΓ)[1])
+        Q[UΓ,VΓ] = (1/αf)*I(size(VΓ)[1])
+    end
+
+    if αs > 1e5
+        Q[VΓ,UΓ] = -(1)*I(size(UΓ)[1])
+        Q[VΓ,VΓ] = (1/αs)*I(size(VΓ)[1])
+    end
+
+    A_u = copy(A)
+    b_u = copy(b)
+    A = Q*A;
+    b = Q*b;
+    println(A == A_u)
+
+    # Access individual blocks
+    A_11 = A[get_range(1), get_range(1)]
+    A_12 = A[get_range(1), get_range(2)]
+    A_21 = A[get_range(2), get_range(1)]
+    A_22 = A[get_range(2), get_range(2)]
+
+    # Preconditioner 
+    P = copy(A)
+    P[get_range(1),get_range(2)] = 0*P[get_range(1),get_range(2)]
+    P = inv(Q) * P
+
+    # Relaxation parameters
+    α = ones(size(A)[1])
+    α[UΓ] = 1*α[UΓ]
+    α[VΓ] = relax*α[VΓ]
+    α = BlockVector(α , blocksizes(A,1))
+
+    # Implementing preconditioning with left preconditioner as P in a richardson iteration scheme
+    function preconditioned_richardson(A, b, P, α)
+        max_iter = 501
+        tol = 1e-6
+        x = zeros(size(A)[1])
+        r = b - A * x
+        res = [norm(r)]
+        for iter in 1:max_iter
+            z = inv(P) * r  # Apply preconditioner
+            #x1 = x + z
+            #x = (1 .-α).*x .+ α .* x1
+            x = x + α.* z
+            r = b - A * x
+            res = [res; norm(r)]
+            if norm(r) < tol
+                return x, iter, res
+            end
+        end
+        println(typeof(res))
+        return x, max_iter, res
+    end
+    xₚ, iterₚ, resP = preconditioned_richardson(A_u, b_u, P, α);
+    iterP = collect(1:iterₚ+1)
+    resₚ = resP[iterₚ+1]
+    uh1ₚ = xₚ[get_range(1)]
+    vh1ₚ = xₚ[get_range(2)] 
+
+    # Convert Soln to CellField
+    uhₚ = FEFunction(U0_u, uh1ₚ)
+    vhₚ = FEFunction(U0_v, vh1ₚ)
+
+    # Post processing 
+    writevtk(Ω, "coupled", cellfields=["u_p"=>uhₚ+vhₚ])
+
+    println("Number of Iterations Preconditioned system - ",iterₚ," And the residual is ", resₚ)
+
+    return iterₚ  
+end
+
+function dirichetRobin(neu)
+    relaxation = collect(0:0.01:1)
+    let arr = []
+    for i = 1:101
+        temp = robin(relaxation[i],2.5,1,1,Inf,neu)
+        arr = [arr ; temp]
+    end
+    plot!(relaxation,arr,ylims=(0,50),label = string(neu))
+    end
+end
+
+function robinNeumann(Dir)
+    relaxation = collect(0:0.01:1)
+    let arr = []
+    for i = 1:101
+        temp = robin(relaxation[i],2.5,1,1,Dir,0)
+        arr = [arr ; temp]
+    end
+    plot!(relaxation,arr,ylims=(0,50),label = string(Dir))
+    end
+end
+
+function robinDirichlet(neu)
+    relaxation = collect(0:0.01:1)
+    let arr = []
+    for i = 1:101
+        temp = robin(relaxation[i],2.5,1,1,neu,Inf)
+        arr = [arr ; temp]
+    end
+    plot!(relaxation,arr,ylims=(0,1000),label = string(neu))
+    end
+end
+
+function dirichletNeumann(a1,a2,interface)
+    relaxation = collect(0:0.01:1)
+    let arr = []
+    for i = 1:101
+        temp = robin(relaxation[i],interface,a1,a2,Inf,0)
+        arr = [arr ; temp]
+    end
+    plot!(relaxation,arr,ylims=(0,50),label = "A1 = "*string(a1)*" A2 = "*string(a2))
+    end
+end
+
+

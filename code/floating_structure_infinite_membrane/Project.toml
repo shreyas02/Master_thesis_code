@@ -1,0 +1,13 @@
+[deps]
+BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
+FillArrays = "1a297f60-69ca-5386-bcde-b61e274b549b"
+Gridap = "56d4f2e9-7ea1-5844-9cf6-b9c51ca7ce8e"
+GridapDistributed = "f9701e48-63b3-45aa-9a63-9bc6c271f355"
+GridapGmsh = "3025c34a-b394-11e9-2a55-3fee550c04c8"
+GridapPETSc = "bcdc36c2-0c3e-11ea-095a-c9dadae499f1"
+GridapSolvers = "6d3209ee-5e3c-4db7-a716-942eb12ed534"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
+PartitionedArrays = "5a9dfac6-5c52-46f7-8278-5e2210713be9"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+WriteVTK = "64499a7a-5c06-52f2-abe2-ccb03c286192"
