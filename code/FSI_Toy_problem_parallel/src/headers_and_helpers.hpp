@@ -111,9 +111,6 @@ typedef multivec_type::global_ordinal_type global_ordinal_type;
 typedef MueLu::DefaultNode NO;
 
 typedef MultiVector<double,int,FROSch::DefaultGlobalOrdinal,Tpetra::KokkosClassic::DefaultNode::DefaultNodeType> multivector_type;
-// typedef multivector_type::scalar_type scalar_type;
-// typedef multivector_type::local_ordinal_type local_ordinal_type;
-// typedef multivector_type::global_ordinal_type global_ordinal_type;
 typedef multivector_type::node_type node_type;
 typedef MultiVectorFactory<scalar_type,local_ordinal_type,global_ordinal_type,node_type> multivectorfactory_type;
 typedef Map<local_ordinal_type,global_ordinal_type,node_type> map_type;
