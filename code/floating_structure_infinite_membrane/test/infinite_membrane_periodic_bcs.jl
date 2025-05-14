@@ -599,7 +599,7 @@ function main(distribute , parts)
     jac(t,(dd,du,dp),(s,v,q)) = ∫(-(∇⋅v)*dp + (∇⋅du)*q)dΩf + ∫(T*∇(dd)⋅∇(s))dΣ + ∫(dp*v⋅VectorValue(-1,0))dΣleft + ∫(dp*v⋅VectorValue(1,0))dΣright
     jac_t(t,(dtd,dtu,dtp),(s,v,q)) = ∫(ρf*v⋅dtu)dΩf
     jac_tt(t,(dttd,dttu,dttp),(s,v,q)) = ∫(ρs*hs*s*dttd)dΣ
-    l(t,(s,v,q)) = ∫(v⊙VectorValue(0.0,-ρf*g) + (q*0.0))dΩf + ∫(s*0.0)dΣ #- ∫(pres_base(t)*v⋅VectorValue(-1,0))dΣleft - ∫(pres_base(t)*v⋅VectorValue(1,0))dΣright
+    l(t,(s,v,q)) = ∫(v⊙VectorValue(0.0,-ρf*g) + (q*0.0))dΩf + ∫(s*0.0)dΣ
 
     # Build affine FE operator
     op = TransientLinearFEOperator((jac, jac_t, jac_tt), l, X, Y)

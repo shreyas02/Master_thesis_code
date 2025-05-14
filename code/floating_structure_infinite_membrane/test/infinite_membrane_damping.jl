@@ -559,8 +559,8 @@ function main(distribute , parts)
 
     # Define Test FE Functions 
     mfs = BlockMultiFieldStyle(2,(1,2),(1,2,3))
-    V = TestFESpace(Ωf,reffeᵤ,dirichlet_tags = ["Bottom"], # ,"Left","Right"
-                        dirichlet_masks =[(false,true)]) # ,(true,false),(true,false)
+    V = TestFESpace(Ωf,reffeᵤ,dirichlet_tags = ["Bottom"],
+                        dirichlet_masks =[(false,true)])
     Q = TestFESpace(Ωf,reffeₚ;conformity=:L2)
     S = TestFESpace(Σ,reffeₛ,dirichlet_tags = ["BCLeft"])
     Yfluid = MultiFieldFESpace([V,Q])
@@ -620,7 +620,7 @@ function main(distribute , parts)
     jac(t,(dd,du,dp),(s,v,q)) = ∫((-(∇⋅v)*dp + (∇⋅du)*q))dΩf + ∫((T*∇(dd)⋅∇(s)))dΣ
     jac_t(t,(dtd,dtu,dtp),(s,v,q)) = ∫((ρf*v⋅dtu))dΩf
     jac_tt(t,(dttd,dttu,dttp),(s,v,q)) = ∫((ρs*hs*s*dttd))dΣ
-    l(t,(s,v,q)) = ∫((v⋅VectorValue(0.0,-ρf*g) + (q*0.0)))dΩf + ∫(s*0.0)dΣ - ∫((pres_base(t)*v⋅VectorValue(-1,0)))dΣleft - ∫((pres_base(t)*v⋅VectorValue(1,0)))dΣright # + ∫(((∇(pres_base(t)))⋅v))dΩf + ∫(α*(-(∇⋅v)*pres_base(t)))dΩf
+    l(t,(s,v,q)) = ∫((v⋅VectorValue(0.0,-ρf*g) + (q*0.0)))dΩf + ∫(s*0.0)dΣ - ∫((pres_base(t)*v⋅VectorValue(-1,0)))dΣleft - ∫((pres_base(t)*v⋅VectorValue(1,0)))dΣright
 
     # Build affine FE operator
     op = TransientLinearFEOperator((jac, jac_t, jac_tt), l, X, Y)

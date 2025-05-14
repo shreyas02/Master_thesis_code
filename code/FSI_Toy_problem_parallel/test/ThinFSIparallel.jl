@@ -598,8 +598,9 @@ function main(distribute , parts)
     ρs = 45;
     ϵ = 0.1;Inf
     L = 1.0e5; # L = ϵ*E/(R²(1-ν²))
+    γ = 0.1 # parameter needed to define the preconditioner
 
-    αf = ((ρs*ϵ/0.001) + L*0.001)*(0.1)
+    αf = ((ρs*ϵ/0.001) + L*0.001)*(γ)
 
     jac(t,(dd,du,dp),(s,v,q)) = ∫(-(∇⋅v)*dp + (∇⋅du)*q)dΩf + ∫(L*dd*s)dΣ
     jac_t(t,(dtd,dtu,dtp),(s,v,q)) = ∫(ρf*v⋅dtu)dΩf
@@ -673,11 +674,9 @@ function main(distribute , parts)
         itermax = solver.log.num_iters
         res = solver.log.residuals[2:itermax+1]
         iter = collect(2:itermax+1) .- 1
-        p = plot(iter,res, yscale=:log10,label="Robin-Neumann",color=:black,linewidth = 2, marker = true)
+        p = plot(iter,res, yscale=:log10,label="Preconditioned-system",color=:black,linewidth = 2, marker = true)
         p = plot!(xlabel = "Iteration",ylabel = "Residual")
         savefig("residual_plot.png")
-        println("residuals - ",res)
-        println("iterations - ", iter)
     end
 
     timer1 = MPI.Wtime() # Adding a timer 
